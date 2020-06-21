@@ -6,6 +6,13 @@ import pyaudio
 import wave
 import os
 import re
+import pickle
+import pickle
+import librosa
+import math
+import numpy as np
+import scipy
+import soundfile as sf
 
 DATA_PATH = 'record'
 CACHE_FILE = '__cache.wav'
@@ -16,6 +23,14 @@ class VoiceDetector:
         cache_full_path = os.path.join(DATA_PATH, CACHE_FILE)
         if os.path.exists(cache_full_path):
             os.remove(cache_full_path)
+
+
+        # Load model
+        model_files = [os.path.join("models/", fname) for fname in
+                       os.listdir("models/") if fname.endswith('.pkl')]
+        self.models = [pickle.load(open(fname, 'rb')) for fname in model_files]
+        self.speakers = [fname.split("/")[-1].split(".pkl")[0] for fname
+                    in model_files]
 
         # Start Tkinter and set Title
         self.main = tkinter.Tk()
@@ -28,7 +43,7 @@ class VoiceDetector:
         self.play = 0
         self.pre_rec = tk.StringVar()   # trace pre-record box value changed
         self.pre_rec.trace('w', self.load_record)
-        self.current_file = ''  # currenty source audio
+        self.current_file = '__cache.wav'  # currenty source audio
         self.stream = self.p.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK)
 
         # Set Frames
@@ -78,9 +93,40 @@ class VoiceDetector:
         # Not implemented
         pass
 
-    def predict(self, wav_file):
-        # Not implemented
-        pass
+    def predict(self):
+        audio_full_path = os.path.join(DATA_PATH, self.current_file)
+        O = self.get_mfcc(audio_full_path)
+        log_likelihood = np.zeros(len(self.models))
+
+        for i in range(len(self.models)):
+            gmm = self.models[i]  # checking with each model one by one
+            scores = np.array(gmm.score(O, [len(O)]))
+            log_likelihood[i] = scores.sum()
+
+        winner = np.argmax(log_likelihood)
+        pre = self.speakers[winner]
+        print(pre)
+        self.state_lbl['text'] = "Predict person:" + pre
+
+
+    def get_mfcc(self, file_path):
+        y, sr = librosa.load(file_path)  # read .wav file
+        hop_length = math.floor(sr * 0.010)  # 10ms hop
+        win_length = math.floor(sr * 0.025)  # 25ms frame
+        # mfcc is 20 x T matrix
+        mfcc = librosa.feature.mfcc(
+            y, sr, n_mfcc=20, n_fft=1024,
+            hop_length=hop_length, win_length=win_length)
+        # substract mean from mfcc --> normalize mfcc
+        mfcc = mfcc - np.mean(mfcc, axis=1).reshape((-1, 1))
+        # delta feature 1st order and 2nd order
+        delta1 = librosa.feature.delta(mfcc, order=1)
+        delta2 = librosa.feature.delta(mfcc, order=2)
+        # X is 60 x T
+        X = np.concatenate([mfcc, delta1, delta2], axis=0)  # O^r
+        # return T x 60 (transpose of X)
+        return X.T  # hmmlearn use T x N matrix
+
 
     def get_pre_record_list(self):
         result = []
@@ -92,7 +138,7 @@ class VoiceDetector:
         self.play = 1
         audio_full_path = os.path.join(DATA_PATH, self.current_file)
         file_exists = os.path.exists(audio_full_path) and os.path.isfile(audio_full_path)
-        self.state_lbl['text'] = 'Playing {:s} ...'.format(current_file) if (file_exists) else 'File {:s} not found!'.format(current_file)
+        self.state_lbl['text'] = 'Playing {:s} ...'.format(self.current_file) if (file_exists) else 'File {:s} not found!'.format(current_file)
 
         if (not file_exists): return
 

@@ -14,16 +14,21 @@ import numpy as np
 import scipy
 import soundfile as sf
 
+# work with browser
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+import time
+
 DATA_PATH = 'record'
 CACHE_FILE = '__cache.wav'
 
 class VoiceDetector:
     def __init__(self, chunk=2048, format=pyaudio.paInt16, channels=2, rate=44100, py=pyaudio.PyAudio()):
         # Clear cache file
-        cache_full_path = os.path.join(DATA_PATH, CACHE_FILE)
-        if os.path.exists(cache_full_path):
-            os.remove(cache_full_path)
-
+        # cache_full_path = os.path.join(DATA_PATH, CACHE_FILE)
+        # if os.path.exists(cache_full_path):
+        #     os.remove(cache_full_path)
 
         # Load model
         model_files = [os.path.join("models/", fname) for fname in
@@ -31,6 +36,11 @@ class VoiceDetector:
         self.models = [pickle.load(open(fname, 'rb')) for fname in model_files]
         self.speakers = [fname.split("/")[-1].split(".pkl")[0] for fname
                     in model_files]
+        self.predict_person = ''
+
+        # Load model predict function
+        self.model_function = pickle.load(open("model_predict_function.pkl", "rb"))
+        self.predict_function_result = ''
 
         # Start Tkinter and set Title
         self.main = tkinter.Tk()
@@ -65,22 +75,112 @@ class VoiceDetector:
         # Predict result
         self.predict_result = tk.Label(self.content, text="Predict result", font=("Arial", 24))
         self.predict_result.grid(row=0, column=0, sticky='S', ipady=70)
+        self.predict_function_text = tk.Label(self.content, text="Function: ")
+        self.predict_function_text.grid(row=1, column=0)
 
         # Action bar
-        ## Record button
-        self.action_btn = tk.Button(self.footer, width=10, padx=10, pady=5, text='Start Recording', command=lambda: self.start_record())
+        # Record button
+        self.action_btn = tk.Button(self.footer, width=10, padx=10, pady=5, text='Start Record', command=lambda: self.start_record())
         self.action_btn.grid(row=0, column=0, padx=(0, 10), pady=5)
-        ## Play button
+        # Play button
         self.play_btn = tk.Button(self.footer, width=5, padx=10, pady=5, text='Play', command=lambda: self.play_audio(), state=tk.DISABLED)
         self.play_btn.grid(row=0, column=1, padx=(0, 10), pady=5)
-        ## Predict button
+        # Predict button
         self.predict_btn = tk.Button(self.footer, width=5, padx=10, pady=5, text='Predict', command=lambda: self.predict(), state=tk.DISABLED)
         self.predict_btn.grid(row=0, column=2, padx=(0, 10), pady=5)
-        ## State (recording, playing)
+        self.predict_function_btn = tk.Button(self.footer, width=10, padx=10, pady=5, text='Predict function', command= self.predict_function)
+        self.predict_function_btn.grid(row=1, column=0, padx=(0, 10), pady=5)
+        # Execute function
+        self.execute_btn = tk.Button(self.footer, width=10, padx=10, pady=5, text='Execute', command= self.handle_function)
+        self.execute_btn.grid(row=1, column=2, padx=(0, 10), pady=5)
+        # State (recording, playing)
         self.state_lbl = tk.Label(self.footer, width=35, text='Waiting for action ...')
         self.state_lbl.grid(row=0, column=3, padx=10)
 
+        # Login logout function
+        self.is_login = False
+        self.first_time_function = True
+        self.login_user = ''
+        self.uetcodehub = 'https://uetcodehub.xyz/'
+        self.browser = webdriver.Chrome('C:/Users/vieta/Downloads/chromedriver')
+        # load dataset including all user's account
+        self.account = {}
+        with open('./data/database.txt', encoding='utf-8') as f:
+            for line in f.readlines():
+                short_name, name, user, password = line.strip().split(',')
+                self.account[short_name] = [name, user, password]
+
         tkinter.mainloop()
+
+    
+
+    def login(self, user):
+        self.browser.get('https://uetcodehub.xyz/')
+        username = self.account[user][1]
+        password = self.account[user][2]
+
+        username_input = self.browser.find_element_by_id("inputName")
+        password_input = self.browser.find_element_by_id("inputPassword")
+        username_input.send_keys(username)
+        password_input.send_keys(password)
+        self.browser.find_element_by_id("submit").click()
+        self.is_login = True
+
+    def logout(self):
+        self.browser.get('https://uetcodehub.xyz/')
+        menu_dropdown = self.browser.find_element_by_id("action-menu-0-menubar")
+        if menu_dropdown:
+            menu_dropdown.click()
+            logout = browser.find_element_by_id("actionmenuaction-6")
+            logout.click()
+            self.is_login = False
+
+    def lock_desktop(self):
+        pass
+
+    def search_web(self):
+        pass
+
+    def handle_login_logout(self, order, user):
+        if order == 'logout':
+            if self.is_login == False:
+                # set text to already logout
+                pass
+            else:
+                self.logout()
+
+        if order == 'login':
+            if self.is_login == True:
+                if self.login_user == user:
+                    # set text to already login
+                    pass
+                else:
+                    self.logout()
+            self.login(user)
+
+    def handle_function(self):
+        if self.predict_function_result == 'Đăng nhập':
+            self.handle_login_logout('login', self.predict_person)
+        if self.predict_function_result == 'Đăng xuất':
+            self.handle_login_logout('logout', self.predict_person)
+        if self.predict_function_result == 'Tìm kiếm':
+            self.lock_desktop()
+        if self.predict_function_result == 'Khóa máy':
+            self.search_web(self.predict_person)
+
+    def predict_function(self):
+        # Avoid wrong person to execute
+        self.predict()
+        if not self.current_file:
+            print("NO file")
+            return
+        audio_full_path = os.path.join(DATA_PATH, self.current_file)
+        O = self.get_mfcc_predict(audio_full_path)
+        score = {cname : model.score(O, [len(O)]) for cname, model in self.model_function.items()}
+        predict = max(score, key=score.get)
+        self.predict_function_result = predict
+        print("predicted")
+        self.predict_function_text.config(text="Result: "+predict)
 
     def change_btn_state(self, s, *args):
         for btn in args:
@@ -105,9 +205,27 @@ class VoiceDetector:
 
         winner = np.argmax(log_likelihood)
         pre = self.speakers[winner]
+        self.predict_person = pre
         print(pre)
         self.state_lbl['text'] = "Predict person:" + pre
 
+    def get_mfcc_predict(self, file_path):
+        y, sr = librosa.load(file_path) # read .wav file
+        hop_length = math.floor(sr*0.010) # 10ms hop
+        win_length = math.floor(sr*0.025) # 25ms frame
+        # mfcc is 12 x T matrix
+        mfcc = librosa.feature.mfcc(
+            y, sr, n_mfcc=12, n_fft=1024,
+            hop_length=hop_length, win_length=win_length)
+        # substract mean from mfcc --> normalize mfcc
+        mfcc = mfcc - np.mean(mfcc, axis=1).reshape((-1,1))
+        # delta feature 1st order and 2nd order
+        delta1 = librosa.feature.delta(mfcc, order=1)
+        delta2 = librosa.feature.delta(mfcc, order=2)
+        # X is 36 x T
+        X = np.concatenate([mfcc, delta1, delta2], axis=0) # O^r
+        # return T x 36 (transpose of X)
+        return X.T # hmmlearn use T x N matrix
 
     def get_mfcc(self, file_path):
         y, sr = librosa.load(file_path)  # read .wav file
@@ -126,7 +244,6 @@ class VoiceDetector:
         X = np.concatenate([mfcc, delta1, delta2], axis=0)  # O^r
         # return T x 60 (transpose of X)
         return X.T  # hmmlearn use T x N matrix
-
 
     def get_pre_record_list(self):
         result = []
@@ -186,7 +303,7 @@ class VoiceDetector:
         wf.close()
 
         self.current_file = CACHE_FILE
-        self.action_btn.configure(text='Start Recording', command=self.start_record, state=tk.NORMAL)
+        self.action_btn.configure(text='Start Record', command=self.start_record, state=tk.NORMAL)
         self.change_btn_state(tk.NORMAL, self.pre_rec_box, self.play_btn, self.predict_btn)
 
     def stop_record(self):

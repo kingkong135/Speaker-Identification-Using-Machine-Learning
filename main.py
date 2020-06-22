@@ -102,10 +102,10 @@ class VoiceDetector:
 
         # Login logout function
         self.is_login = False
-        self.first_time_function = True
+        self.first_time_browser = True
         self.login_user = ''
         self.uetcodehub = 'https://uetcodehub.xyz/'
-        self.browser = webdriver.Chrome('C:/Users/vieta/Downloads/chromedriver')
+        # self.browser = webdriver.Chrome('C:/Users/vieta/Downloads/chromedriver')
         # load dataset including all user's account
         self.account = {}
         with open('./data/database.txt', encoding='utf-8') as f:
@@ -114,6 +114,15 @@ class VoiceDetector:
                 self.account[short_name] = [name, user, password]
 
         tkinter.mainloop()
+
+    def check_close_browser(self):
+        DISCONNECTED_MSG = 'Unable to evaluate script: disconnected: not connected to DevTools\n'
+        if len(self.browser.get_log('driver')) == 0:
+            print("not closed yet")
+            return False
+        elif self.browser.get_log('driver')[-1]['message'] == DISCONNECTED_MSG:
+            print('Browser window closed by user')
+            return True
 
     def login(self, user):
         self.browser.get('https://uetcodehub.xyz/')
@@ -155,7 +164,6 @@ class VoiceDetector:
                 pass
             else:
                 self.logout()
-
         if order == 'login':
             if self.is_login == True:
                 if self.login_user == user:
@@ -166,14 +174,21 @@ class VoiceDetector:
             self.login(user)
 
     def handle_function(self):
-        if self.predict_function_result == 'Đăng nhập':
-            self.handle_login_logout('login', self.predict_person)
-        if self.predict_function_result == 'Đăng xuất':
-            self.handle_login_logout('logout', self.predict_person)
-        if self.predict_function_result == 'Tìm kiếm':
-            self.search_web()
         if self.predict_function_result == 'Khóa máy':
             self.lock_desktop(self.predict_person)
+        else:
+            if self.first_time_browser == True:
+                self.first_time_browser = False
+                self.browser = webdriver.Chrome('C:/Users/vieta/Downloads/chromedriver')
+            if self.check_close_browser():
+                self.browser = webdriver.Chrome('C:/Users/vieta/Downloads/chromedriver')
+                self.is_login = False
+            if self.predict_function_result == 'Đăng nhập':
+                self.handle_login_logout('login', self.predict_person)
+            if self.predict_function_result == 'Đăng xuất':
+                self.handle_login_logout('logout', self.predict_person)
+            if self.predict_function_result == 'Tìm kiếm':
+                self.search_web()
 
     def predict_function(self):
         # Avoid wrong person to execute

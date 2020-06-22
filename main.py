@@ -110,8 +110,8 @@ class VoiceDetector:
         self.account = {}
         with open('./data/database.txt', encoding='utf-8') as f:
             for line in f.readlines():
-                short_name, name, user, password = line.strip().split(',')
-                self.account[short_name] = [name, user, password]
+                short_name, name, user, password, fullname = line.strip().split(',')
+                self.account[short_name] = [name, user, password, fullname]
 
         tkinter.mainloop()
 
@@ -147,15 +147,21 @@ class VoiceDetector:
 
     def lock_desktop(self, user):
         # change this to specify user
-        if user == 'VA':
+        if user == 'Đạt':
             os_name = os.name
             if os_name == 'nt':
                 ctypes.windll.user32.LockWorkStation()
             elif os_name == 'posix':
                 os.system('dbus-send --type=method_call --dest=org.gnome.ScreenSaver /org/gnome/ScreenSaver org.gnome.ScreenSaver.Lock')
 
-    def search_web(self):
-        pass
+    def search_web(self, user):
+        self.browser.get('http://www.google.com')
+
+        search = self.browser.find_element_by_name('q')
+        # search.send_keys("google search through python")
+        search.send_keys(self.account[user][3])
+        search.send_keys(Keys.RETURN)  # hit return after you enter search text
+
 
     def handle_login_logout(self, order, user):
         if order == 'logout':

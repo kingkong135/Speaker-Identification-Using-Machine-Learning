@@ -166,7 +166,7 @@ class VoiceDetector:
 
     def lock_desktop(self, user):
         # change this to specify user
-        if user == 'VA':
+        if user == 'Tiến Đạt':
             os_name = os.name
             if os_name == 'nt':
                 ctypes.windll.user32.LockWorkStation()
@@ -395,7 +395,7 @@ class VoiceDetector:
         if event.char == 's':
             self.stop_record()
 
-        if event.char == "c":
+        if event.char == "f":
             self.predict()
 
 

@@ -26,7 +26,10 @@ import ctypes
 DATA_PATH = 'record'
 CACHE_FILE = '__cache.wav'
 BROWSER = webdriver.Edge
-DRIVER = r'C:/Users/vieta/Downloads/chromedriver'
+# DRIVER = r'C:/Users/vieta/Downloads/chromedriver'
+DRIVER = r'./chromedriver_linux64/chromedriver'
+
+
 
 class VoiceDetector:
     def __init__(self, chunk=2048, format=pyaudio.paInt16, channels=2, rate=44100, py=pyaudio.PyAudio()):
@@ -40,7 +43,7 @@ class VoiceDetector:
                        os.listdir("models/") if fname.endswith('.pkl')]
         self.models = [pickle.load(open(fname, 'rb')) for fname in model_files]
         self.speakers = [fname.split("/")[-1].split(".pkl")[0] for fname
-                    in model_files]
+                         in model_files]
         self.predict_person = ''
 
         # Load model predict function
@@ -49,6 +52,7 @@ class VoiceDetector:
 
         # Start Tkinter and set Title
         self.main = tkinter.Tk()
+        self.main.bind("<Key>", self.keypress)
         self.collections = []
         self.main.geometry('800x400')
         self.main.title('INT3411 - Speech Processing')
@@ -57,7 +61,8 @@ class VoiceDetector:
         self.st = 1
         self.play = 0
         self.current_file = '__cache.wav'  # currenty source audio
-        self.stream = self.p.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK)
+        self.stream = self.p.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True,
+                                  frames_per_buffer=self.CHUNK)
 
         # Set Frames
         self.header = tkinter.Frame(self.main, padx=10, pady=10)
@@ -75,7 +80,7 @@ class VoiceDetector:
         self.pre_rec_btn = tk.Button(self.header, text="Select file", command=self.select_file, width=10)
         self.pre_rec_btn.grid(row=0, column=1, padx=(0, 10))
         self.pre_rec_filename = tk.Label(self.header, width=0, text='No file selected')
-        self.pre_rec_filename.grid(row=0, column=2, padx=(0, ))
+        self.pre_rec_filename.grid(row=0, column=2, padx=(0,))
 
         # Predict result
         self.predict_result = tk.Label(self.content, text="Predict speaker", font=("Arial", 24))
@@ -85,23 +90,27 @@ class VoiceDetector:
 
         # Action bar
         # Record button
-        self.action_btn = tk.Button(self.footer, width=10, padx=10, pady=5, text='Start Record', command=lambda: self.start_record())
+        self.action_btn = tk.Button(self.footer, width=10, padx=10, pady=5, text='Start Record',
+                                    command=lambda: self.start_record())
         self.action_btn.grid(row=0, column=0, padx=(0, 10), pady=5)
         # Play button
-        self.play_btn = tk.Button(self.footer, width=5, padx=10, pady=5, text='Play', command=lambda: self.play_audio(), state=tk.DISABLED)
+        self.play_btn = tk.Button(self.footer, width=5, padx=10, pady=5, text='Play', command=lambda: self.play_audio(),
+                                  state=tk.DISABLED)
         self.play_btn.grid(row=0, column=1, padx=(0, 10), pady=5)
         # Predict button
-        self.predict_btn = tk.Button(self.footer, width=5, padx=10, pady=5, text='Predict', command=lambda: self.predict(), state=tk.DISABLED)
+        self.predict_btn = tk.Button(self.footer, width=5, padx=10, pady=5, text='Predict',
+                                     command=lambda: self.predict(), state=tk.DISABLED)
         self.predict_btn.grid(row=0, column=2, padx=(0, 10), pady=5)
         # Do action checkbox
         self.detect_action_chk = tk.BooleanVar()
         self.detect_action_chk.set(False)
         self.detect_action_chkbox = tk.Checkbutton(self.footer, text='Detect action', var=self.detect_action_chk)
         self.detect_action_chkbox.grid(row=0, column=3, padx=(15, 10))
-        #self.predict_function_btn = tk.Button(self.footer, width=10, padx=10, pady=5, text='Predict function', command= self.predict_function)
-        #self.predict_function_btn.grid(row=1, column=0, padx=(0, 10), pady=5)
+        # self.predict_function_btn = tk.Button(self.footer, width=10, padx=10, pady=5, text='Predict function', command= self.predict_function)
+        # self.predict_function_btn.grid(row=1, column=0, padx=(0, 10), pady=5)
         # Execute function
-        self.execute_btn = tk.Button(self.footer, width=10, padx=10, pady=5, text='Execute', command= self.handle_function)
+        self.execute_btn = tk.Button(self.footer, width=10, padx=10, pady=5, text='Execute',
+                                     command=self.handle_function)
         self.execute_btn.grid(row=0, column=4, padx=(0, 50), pady=5)
         # State (recording, playing)
         self.state_lbl = tk.Label(self.footer, width=35, text='Waiting for action ...')
@@ -117,8 +126,8 @@ class VoiceDetector:
         self.account = {}
         with open('./data/database.txt', encoding='utf-8') as f:
             for line in f.readlines():
-                short_name, name, user, password, fullname = line.strip().split(',')
-                self.account[short_name] = [name, user, password, fullname]
+                name, user, password, fullname = line.strip().split(',')
+                self.account[name] = [name, user, password, fullname]
 
         tkinter.mainloop()
 
@@ -161,7 +170,8 @@ class VoiceDetector:
             if os_name == 'nt':
                 ctypes.windll.user32.LockWorkStation()
             elif os_name == 'posix':
-                os.system('dbus-send --type=method_call --dest=org.gnome.ScreenSaver /org/gnome/ScreenSaver org.gnome.ScreenSaver.Lock')
+                os.system(
+                    'dbus-send --type=method_call --dest=org.gnome.ScreenSaver /org/gnome/ScreenSaver org.gnome.ScreenSaver.Lock')
         else:
             self.state_lbl['text'] = "Can't lock because you aren't the owner"
 
@@ -172,7 +182,6 @@ class VoiceDetector:
         # search.send_keys("google search through python")
         search.send_keys(self.account[user][3])
         search.send_keys(Keys.RETURN)  # hit return after you enter search text
-
 
     def handle_login_logout(self, order, user):
         if order == 'logout':
@@ -217,13 +226,15 @@ class VoiceDetector:
         self.predict_result['text'] = "Predict speaker"
         self.predict_function_text.config(text='Action: ')
         self.state_lbl.config(text='Waiting for action')
-        self.change_btn_state(tk.DISABLED, self.action_btn, self.play_btn, self.predict_btn, self.detect_action_chkbox, self.execute_btn)
+        self.change_btn_state(tk.DISABLED, self.action_btn, self.play_btn, self.predict_btn, self.detect_action_chkbox,
+                              self.execute_btn)
         fname = filedialog.askopenfilename(filetypes=[('Pre-record file (*.wav)', '*.wav')])
         self.current_file = fname
         if (fname):
             self.pre_rec_filename['text'] = self.current_file.split('/')[-1]
             print(self.current_file)
-        self.change_btn_state(tk.NORMAL, self.action_btn, self.play_btn, self.predict_btn, self.detect_action_chkbox, self.execute_btn)
+        self.change_btn_state(tk.NORMAL, self.action_btn, self.play_btn, self.predict_btn, self.detect_action_chkbox,
+                              self.execute_btn)
 
     def add_person(self):
         # Not implemented
@@ -245,32 +256,32 @@ class VoiceDetector:
         print(pre)
         self.predict_result['text'] = "Speaker detected: " + pre
         if not self.detect_action_chk.get():
-            return # don't detect action
+            return  # don't detect action
         O2 = self.get_mfcc_predict(audio_full_path)
-        score = {cname : model.score(O2, [len(O)]) for cname, model in self.model_function.items()}
+        score = {cname: model.score(O2, [len(O)]) for cname, model in self.model_function.items()}
         action = max(score, key=score.get)
         self.predict_function_result = action
         print('action detected')
         # self.state_lbl['text'] = 'Action detected: {:s}!'.format(action)
-        self.predict_function_text.config(text='Action detected: '+action)
+        self.predict_function_text.config(text='Action detected: ' + action)
 
     def get_mfcc_predict(self, file_path):
-        y, sr = librosa.load(file_path) # read .wav file
-        hop_length = math.floor(sr*0.010) # 10ms hop
-        win_length = math.floor(sr*0.025) # 25ms frame
+        y, sr = librosa.load(file_path)  # read .wav file
+        hop_length = math.floor(sr * 0.010)  # 10ms hop
+        win_length = math.floor(sr * 0.025)  # 25ms frame
         # mfcc is 12 x T matrix
         mfcc = librosa.feature.mfcc(
             y, sr, n_mfcc=12, n_fft=1024,
             hop_length=hop_length, win_length=win_length)
         # substract mean from mfcc --> normalize mfcc
-        mfcc = mfcc - np.mean(mfcc, axis=1).reshape((-1,1))
+        mfcc = mfcc - np.mean(mfcc, axis=1).reshape((-1, 1))
         # delta feature 1st order and 2nd order
         delta1 = librosa.feature.delta(mfcc, order=1)
         delta2 = librosa.feature.delta(mfcc, order=2)
         # X is 36 x T
-        X = np.concatenate([mfcc, delta1, delta2], axis=0) # O^r
+        X = np.concatenate([mfcc, delta1, delta2], axis=0)  # O^r
         # return T x 36 (transpose of X)
-        return X.T # hmmlearn use T x N matrix
+        return X.T  # hmmlearn use T x N matrix
 
     def get_mfcc(self, file_path):
         y, sr = librosa.load(file_path)  # read .wav file
@@ -294,14 +305,17 @@ class VoiceDetector:
         self.play = 1
         audio_full_path = self.current_file
         file_exists = os.path.exists(audio_full_path) and os.path.isfile(audio_full_path)
-        self.state_lbl['text'] = 'Playing {:s} ...'.format(self.current_file) if (file_exists) else 'File {:s} not found!'.format(self.current_file)
+        self.state_lbl['text'] = 'Playing {:s} ...'.format(self.current_file) if (
+            file_exists) else 'File {:s} not found!'.format(self.current_file)
 
         if (not file_exists): return
 
-        self.change_btn_state(tk.DISABLED, self.pre_rec_btn, self.action_btn, self.predict_btn, self.detect_action_chkbox, self.execute_btn)
+        self.change_btn_state(tk.DISABLED, self.pre_rec_btn, self.action_btn, self.predict_btn,
+                              self.detect_action_chkbox, self.execute_btn)
         self.play_btn.configure(text='Stop', command=self.stop_audio)
         wf = wave.open(audio_full_path, 'rb')
-        stream = self.p.open(format=self.p.get_format_from_width(wf.getsampwidth()), channels=wf.getnchannels(), rate=wf.getframerate(), output=True)
+        stream = self.p.open(format=self.p.get_format_from_width(wf.getsampwidth()), channels=wf.getnchannels(),
+                             rate=wf.getframerate(), output=True)
         data = wf.readframes(self.CHUNK)
 
         while self.play == 1 and len(data) > 0:
@@ -312,7 +326,8 @@ class VoiceDetector:
         stream.stop_stream()
         stream.close()
 
-        self.change_btn_state(tk.NORMAL, self.pre_rec_btn, self.action_btn, self.predict_btn, self.detect_action_chkbox, self.execute_btn)
+        self.change_btn_state(tk.NORMAL, self.pre_rec_btn, self.action_btn, self.predict_btn, self.detect_action_chkbox,
+                              self.execute_btn)
         self.play_btn.configure(text='Play', command=self.play_audio)
         self.state_lbl['text'] = 'Waiting for action ...'
 
@@ -329,7 +344,8 @@ class VoiceDetector:
         self.action_btn.configure(text='Stop Recording', command=self.stop_record)
         output_target = os.path.join(DATA_PATH, CACHE_FILE)
         self.state_lbl['text'] = 'Recording to {:s} ...'.format(output_target)
-        stream = self.p.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK)
+        stream = self.p.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True,
+                             frames_per_buffer=self.CHUNK)
 
         while self.st == 1:
             data = stream.read(self.CHUNK)
@@ -351,6 +367,23 @@ class VoiceDetector:
 
     def stop_record(self):
         self.st = 0
+
+    def keypress(self, event):
+        """Recieve a keypress and move the ball by a specified amount"""
+        print(event.char)
+        if event.char == 'p':
+            self.play_audio()
+
+        if event.char == 'r':
+            print(True)
+            self.start_record()
+
+        if event.char == 's':
+            self.stop_record()
+
+        if event.char == "c":
+            self.predict()
+
 
 # Create an object of the ProgramGUI class to begin the program.
 if __name__ == '__main__':

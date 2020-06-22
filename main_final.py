@@ -45,6 +45,7 @@ class VoiceDetector:
         self.speakers = [fname.split("/")[-1].split(".pkl")[0] for fname
                          in model_files]
         self.predict_person = ''
+        self.is_celeb = False
 
         # Load model predict function
         self.model_function = pickle.load(open("model_predict_function.pkl", "rb"))
@@ -180,7 +181,11 @@ class VoiceDetector:
 
         search = self.browser.find_element_by_name('q')
         # search.send_keys("google search through python")
-        search.send_keys(self.account[user][3])
+        if self.is_celeb == True:
+            search.send_keys(self.predict_person)
+            self.is_celeb = False
+        else:
+            search.send_keys(self.account[user][3])
         search.send_keys(Keys.RETURN)  # hit return after you enter search text
 
     def handle_login_logout(self, order, user):
@@ -211,12 +216,15 @@ class VoiceDetector:
             if self.check_close_browser():
                 self.browser = webdriver.Chrome(DRIVER)
                 self.is_login = False
-            if self.predict_function_result == 'Đăng nhập':
-                self.handle_login_logout('login', self.predict_person)
-            if self.predict_function_result == 'Đăng xuất':
-                self.handle_login_logout('logout', self.predict_person)
-            if self.predict_function_result == 'Tìm kiếm':
+            if self.is_celeb == True:
                 self.search_web(self.predict_person)
+            else:
+                if self.predict_function_result == 'Đăng nhập':
+                    self.handle_login_logout('login', self.predict_person)
+                if self.predict_function_result == 'Đăng xuất':
+                    self.handle_login_logout('logout', self.predict_person)
+                if self.predict_function_result == 'Tìm kiếm':
+                    self.search_web(self.predict_person)
 
     def change_btn_state(self, s, *args):
         for btn in args:
@@ -240,6 +248,11 @@ class VoiceDetector:
         # Not implemented
         pass
 
+    def handle_celeb(self):
+        if self.predict_person not in self.account:
+            self.is_celeb = True
+            self.state_lbl.config(text='Celeb! Only search action available')
+
     def predict(self):
         audio_full_path = self.current_file
         O = self.get_mfcc(audio_full_path)
@@ -253,6 +266,7 @@ class VoiceDetector:
         winner = np.argmax(log_likelihood)
         pre = self.speakers[winner]
         self.predict_person = pre
+        self.handle_celeb()
         print(pre)
         self.predict_result['text'] = "Speaker detected: " + pre
         if not self.detect_action_chk.get():

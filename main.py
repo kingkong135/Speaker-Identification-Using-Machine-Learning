@@ -194,7 +194,7 @@ class VoiceDetector:
             if self.predict_function_result == 'Đăng xuất':
                 self.handle_login_logout('logout', self.predict_person)
             if self.predict_function_result == 'Tìm kiếm':
-                self.search_web()
+                self.search_web(self.predict_person)
 
     def predict_function(self):
         # Avoid wrong person to execute

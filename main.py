@@ -20,6 +20,9 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 import time
 
+# lock desktop
+import ctypes
+
 DATA_PATH = 'record'
 CACHE_FILE = '__cache.wav'
 
@@ -112,8 +115,6 @@ class VoiceDetector:
 
         tkinter.mainloop()
 
-    
-
     def login(self, user):
         self.browser.get('https://uetcodehub.xyz/')
         username = self.account[user][1]
@@ -131,12 +132,18 @@ class VoiceDetector:
         menu_dropdown = self.browser.find_element_by_id("action-menu-0-menubar")
         if menu_dropdown:
             menu_dropdown.click()
-            logout = browser.find_element_by_id("actionmenuaction-6")
+            logout = self.browser.find_element_by_id("actionmenuaction-6")
             logout.click()
             self.is_login = False
 
-    def lock_desktop(self):
-        pass
+    def lock_desktop(self, user):
+        # change this to specify user
+        if user == 'VA':
+            os_name = os.name
+            if os_name == 'nt':
+                ctypes.windll.user32.LockWorkStation()
+            elif os_name == 'posix':
+                os.system('dbus-send --type=method_call --dest=org.gnome.ScreenSaver /org/gnome/ScreenSaver org.gnome.ScreenSaver.Lock')
 
     def search_web(self):
         pass
@@ -164,9 +171,9 @@ class VoiceDetector:
         if self.predict_function_result == 'Đăng xuất':
             self.handle_login_logout('logout', self.predict_person)
         if self.predict_function_result == 'Tìm kiếm':
-            self.lock_desktop()
+            self.search_web()
         if self.predict_function_result == 'Khóa máy':
-            self.search_web(self.predict_person)
+            self.lock_desktop(self.predict_person)
 
     def predict_function(self):
         # Avoid wrong person to execute

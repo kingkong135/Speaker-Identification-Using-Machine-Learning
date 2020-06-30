@@ -26,8 +26,8 @@ import ctypes
 DATA_PATH = 'record'
 CACHE_FILE = '__cache.wav'
 BROWSER = webdriver.Edge
-# DRIVER = r'C:/Users/vieta/Downloads/chromedriver'
-DRIVER = r'./chromedriver_linux64/chromedriver'
+DRIVER = r'C:/Users/vieta/Downloads/chromedriver'
+# DRIVER = r'./chromedriver_linux64/chromedriver'
 
 
 
@@ -39,8 +39,8 @@ class VoiceDetector:
             os.remove(cache_full_path)
 
         # Load model
-        model_files = [os.path.join("models/", fname) for fname in
-                       os.listdir("models/") if fname.endswith('.pkl')]
+        model_files = [os.path.join("models2/", fname) for fname in
+                       os.listdir("models2/") if fname.endswith('.pkl')]
         self.models = [pickle.load(open(fname, 'rb')) for fname in model_files]
         self.speakers = [fname.split("/")[-1].split(".pkl")[0] for fname
                          in model_files]
@@ -166,7 +166,7 @@ class VoiceDetector:
 
     def lock_desktop(self, user):
         # change this to specify user
-        if user == 'Tiến Đạt':
+        if user == 'Việt Anh':
             os_name = os.name
             if os_name == 'nt':
                 ctypes.windll.user32.LockWorkStation()
